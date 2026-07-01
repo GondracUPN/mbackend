@@ -27,7 +27,7 @@ export class AuthController {
     response.cookie('optica_access_token', result.accessToken, {
       httpOnly: true,
       secure: this.config.get('COOKIE_SECURE', 'false') === 'true',
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 8 * 60 * 60 * 1000,
       path: '/',
     });
