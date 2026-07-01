@@ -38,7 +38,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   logout(@Res({ passthrough: true }) response: Response): void {
-    response.clearCookie('optica_access_token', { path: '/' });
+    const secure = this.config.get('COOKIE_SECURE', 'false') === 'true';
+    response.clearCookie('optica_access_token', {
+      httpOnly: true,
+      secure,
+      sameSite: secure ? 'none' : 'lax',
+      path: '/',
+    });
   }
 
   @Get('me')
