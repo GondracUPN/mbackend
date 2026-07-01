@@ -35,6 +35,7 @@ export class AuthController {
     return { user: result.user };
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(204)
   logout(@Res({ passthrough: true }) response: Response): void {
