@@ -24,10 +24,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(dto);
+    const secure = this.config.get('COOKIE_SECURE', 'false') === 'true';
     response.cookie('optica_access_token', result.accessToken, {
       httpOnly: true,
-      secure: this.config.get('COOKIE_SECURE', 'false') === 'true',
-      sameSite: 'none',
+      secure,
+      sameSite: secure ? 'none' : 'lax',
       maxAge: 8 * 60 * 60 * 1000,
       path: '/',
     });

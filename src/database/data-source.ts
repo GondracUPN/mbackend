@@ -12,6 +12,7 @@ import { PrescriptionsAndOrders1719878400000 } from './migrations/1719878400000-
 import { Prescription } from '../modules/prescriptions/entities/prescription.entity';
 import { PrescriptionVersion } from '../modules/prescriptions/entities/prescription-version.entity';
 import { WorkOrder } from '../modules/prescriptions/entities/work-order.entity';
+import { PerformanceIndexes1720051200000 } from './migrations/1720051200000-performance-indexes';
 
 export default new DataSource({
   type: 'postgres',
@@ -32,7 +33,11 @@ export default new DataSource({
     PrescriptionVersion,
     WorkOrder,
   ],
-  migrations: [InitialSchema1719792000000, PrescriptionsAndOrders1719878400000],
+  migrations: [
+    InitialSchema1719792000000,
+    PrescriptionsAndOrders1719878400000,
+    PerformanceIndexes1720051200000,
+  ],
   migrationsTableName: 'migrations',
   synchronize: false,
   logging: process.env.DB_LOGGING === 'true',

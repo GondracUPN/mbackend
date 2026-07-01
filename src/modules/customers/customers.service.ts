@@ -74,7 +74,8 @@ export class CustomersService {
   ) {
     const qb = this.customers
       .createQueryBuilder('customer')
-      .leftJoinAndSelect('customer.createdInBranch', 'branch')
+      .leftJoin('customer.createdInBranch', 'branch')
+      .addSelect(['branch.id', 'branch.name'])
       .where('customer.companyId = :companyId', { companyId: user.companyId });
 
     if (deleted) qb.withDeleted().andWhere('customer.deletedAt IS NOT NULL');
@@ -112,8 +113,9 @@ export class CustomersService {
       .take(query.pageSize);
 
     const [items, total] = await qb.getManyAndCount();
+    const today = this.todayInLima();
     return {
-      items: items.map((item) => this.present(item)),
+      items: items.map((item) => this.present(item, undefined, today)),
       pagination: {
         page: query.page,
         pageSize: query.pageSize,
@@ -149,7 +151,8 @@ export class CustomersService {
 
     const qb = this.customers
       .createQueryBuilder('customer')
-      .leftJoinAndSelect('customer.createdInBranch', 'branch')
+      .leftJoin('customer.createdInBranch', 'branch')
+      .addSelect(['branch.id', 'branch.name'])
       .where('customer.companyId = :companyId', { companyId: user.companyId })
       .andWhere('customer.deletedAt IS NULL')
       .andWhere(
@@ -158,8 +161,10 @@ export class CustomersService {
       )
       .orderBy('similarity(customer.searchText, :name)', 'DESC')
       .take(5);
-    return (await qb.getMany()).map((item) =>
-      this.present(item, 'POSIBLE_COINCIDENCIA'),
+    const matches = await qb.getMany();
+    const today = this.todayInLima();
+    return matches.map((item) =>
+      this.present(item, 'POSIBLE_COINCIDENCIA', today),
     );
   }
 
@@ -345,7 +350,7 @@ export class CustomersService {
     );
   }
 
-  private present(customer: Customer, matchType?: string) {
+  private present(customer: Customer, matchType?: string, today?: string) {
     return {
       id: customer.id,
       dni: customer.dni,
@@ -353,7 +358,7 @@ export class CustomersService {
       lastNames: customer.lastNames,
       fullName: `${customer.lastNames}, ${customer.firstNames}`,
       birthDate: customer.birthDate,
-      age: this.calculateAge(customer.birthDate),
+      age: this.calculateAge(customer.birthDate, today),
       address: customer.address,
       phone: customer.phone,
       status: customer.status,
@@ -371,10 +376,8 @@ export class CustomersService {
     };
   }
 
-  private calculateAge(birthDate: string): number {
-    const [todayYear, todayMonth, todayDay] = this.todayInLima()
-      .split('-')
-      .map(Number);
+  private calculateAge(birthDate: string, today = this.todayInLima()): number {
+    const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
     const [year, month, day] = birthDate.split('-').map(Number);
     let age = todayYear - year;
     if (todayMonth < month || (todayMonth === month && todayDay < day)) age--;
@@ -382,15 +385,11 @@ export class CustomersService {
   }
 
   private todayInLima(): string {
-    const parts = new Intl.DateTimeFormat('en-CA', {
+    return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Lima',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).formatToParts(new Date());
-    const values = Object.fromEntries(
-      parts.map((part) => [part.type, part.value]),
-    );
-    return `${values.year}-${values.month}-${values.day}`;
+    }).format(new Date());
   }
 }
