@@ -13,6 +13,7 @@ import { Prescription } from '../modules/prescriptions/entities/prescription.ent
 import { PrescriptionVersion } from '../modules/prescriptions/entities/prescription-version.entity';
 import { WorkOrder } from '../modules/prescriptions/entities/work-order.entity';
 import { PerformanceIndexes1720051200000 } from './migrations/1720051200000-performance-indexes';
+import { UnlimitedAddAndPrism1720137600000 } from './migrations/1720137600000-unlimited-add-and-prism';
 
 export default new DataSource({
   type: 'postgres',
@@ -37,6 +38,7 @@ export default new DataSource({
     InitialSchema1719792000000,
     PrescriptionsAndOrders1719878400000,
     PerformanceIndexes1720051200000,
+    UnlimitedAddAndPrism1720137600000,
   ],
   migrationsTableName: 'migrations',
   synchronize: false,

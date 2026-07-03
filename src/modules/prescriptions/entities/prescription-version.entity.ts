@@ -41,16 +41,12 @@ export class PrescriptionVersion {
   @Column({
     name: 'right_add',
     type: 'numeric',
-    precision: 5,
-    scale: 2,
     nullable: true,
   })
   rightAdd!: string | null;
   @Column({
     name: 'right_prism',
     type: 'numeric',
-    precision: 5,
-    scale: 2,
     nullable: true,
   })
   rightPrism!: string | null;
@@ -64,16 +60,12 @@ export class PrescriptionVersion {
   @Column({
     name: 'left_add',
     type: 'numeric',
-    precision: 5,
-    scale: 2,
     nullable: true,
   })
   leftAdd!: string | null;
   @Column({
     name: 'left_prism',
     type: 'numeric',
-    precision: 5,
-    scale: 2,
     nullable: true,
   })
   leftPrism!: string | null;

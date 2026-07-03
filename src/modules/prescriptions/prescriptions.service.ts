@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { normalizeSearchText } from '../../common/utils/normalize.util';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { Customer } from '../customers/entities/customer.entity';
@@ -31,33 +31,43 @@ export class PrescriptionsService {
     user: AuthenticatedUser,
   ) {
     this.validateDate(dto.prescriptionDate);
-    return this.dataSource.transaction(async (manager) => {
-      const customer = await manager
-        .getRepository(Customer)
-        .findOneBy({ id: customerId, companyId: user.companyId });
-      if (!customer) throw new NotFoundException('Cliente no encontrado.');
-      if (customer.status !== CustomerStatus.ACTIVE)
-        throw new ConflictException(
-          'Debe reactivar al cliente antes de registrar una receta.',
+    const prescriptionId = await this.dataSource.transaction(
+      async (manager) => {
+        const customer = await manager.getRepository(Customer).findOne({
+          where: { id: customerId, companyId: user.companyId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!customer) throw new NotFoundException('Cliente no encontrado.');
+        if (customer.status !== CustomerStatus.ACTIVE)
+          throw new ConflictException(
+            'Debe reactivar al cliente antes de registrar una receta.',
+          );
+        const prescription = await manager.getRepository(Prescription).save(
+          manager.getRepository(Prescription).create({
+            companyId: user.companyId,
+            customerId,
+            currentVersionId: null,
+          }),
         );
-      const prescription = await manager.getRepository(Prescription).save(
-        manager.getRepository(Prescription).create({
-          companyId: user.companyId,
+        const version = await manager
+          .getRepository(PrescriptionVersion)
+          .save(
+            manager
+              .getRepository(PrescriptionVersion)
+              .create(this.versionData(prescription.id, 1, dto, user.id)),
+          );
+        prescription.currentVersionId = version.id;
+        await manager.getRepository(Prescription).save(prescription);
+        await this.keepLatestThreePrescriptions(
+          manager,
           customerId,
-          currentVersionId: null,
-        }),
-      );
-      const version = await manager
-        .getRepository(PrescriptionVersion)
-        .save(
-          manager
-            .getRepository(PrescriptionVersion)
-            .create(this.versionData(prescription.id, 1, dto, user.id)),
+          user.companyId,
+          prescription.id,
         );
-      prescription.currentVersionId = version.id;
-      await manager.getRepository(Prescription).save(prescription);
-      return this.findOne(prescription.id, user);
-    });
+        return prescription.id;
+      },
+    );
+    return this.findOne(prescriptionId, user);
   }
 
   async correct(
@@ -227,6 +237,54 @@ export class PrescriptionsService {
       leftPrism: numberOrNull(dto.leftPrism),
       createdById: userId,
     };
+  }
+
+  private async keepLatestThreePrescriptions(
+    manager: EntityManager,
+    customerId: string,
+    companyId: string,
+    newPrescriptionId: string,
+  ): Promise<void> {
+    const prescriptionRepository = manager.getRepository(Prescription);
+    const expired = await prescriptionRepository
+      .createQueryBuilder('prescription')
+      .select(['prescription.id'])
+      .where('prescription.customerId = :customerId', { customerId })
+      .andWhere('prescription.companyId = :companyId', { companyId })
+      .andWhere('prescription.id <> :newPrescriptionId', {
+        newPrescriptionId,
+      })
+      .andWhere('prescription.deletedAt IS NULL')
+      .orderBy('prescription.createdAt', 'DESC')
+      .addOrderBy('prescription.id', 'DESC')
+      .offset(2)
+      .getMany();
+    const ids = expired.map((prescription) => prescription.id);
+    if (ids.length === 0) return;
+
+    await prescriptionRepository
+      .createQueryBuilder()
+      .update(Prescription)
+      .set({ currentVersionId: null })
+      .where('id IN (:...ids)', { ids })
+      .execute();
+    await manager
+      .getRepository(WorkOrder)
+      .createQueryBuilder()
+      .delete()
+      .where('prescription_id IN (:...ids)', { ids })
+      .execute();
+    await manager
+      .getRepository(PrescriptionVersion)
+      .createQueryBuilder()
+      .delete()
+      .where('prescription_id IN (:...ids)', { ids })
+      .execute();
+    await prescriptionRepository
+      .createQueryBuilder()
+      .delete()
+      .where('id IN (:...ids)', { ids })
+      .execute();
   }
 
   private summary(prescription: Prescription) {

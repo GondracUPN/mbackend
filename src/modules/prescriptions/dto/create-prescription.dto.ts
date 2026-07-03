@@ -41,14 +41,11 @@ export class CreatePrescriptionDto {
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(10)
-  @IsQuarterDiopter()
   rightAdd?: number;
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(20)
   rightPrism?: number;
 
   @Type(() => Number)
@@ -73,13 +70,10 @@ export class CreatePrescriptionDto {
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(10)
-  @IsQuarterDiopter()
   leftAdd?: number;
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(20)
   leftPrism?: number;
 }
